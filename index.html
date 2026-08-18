@@ -11,6 +11,10 @@
   <link rel="canonical" href="https://findahustle.co.za">
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- ================================================================ -->
+  <!-- SUPABASE JS LIBRARY (CDN — no npm / no installation required)    -->
+  <!-- ================================================================ -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * {
       margin: 0;
@@ -122,7 +126,8 @@
       letter-spacing: -0.2px;
     }
 
-    select, input[type="number"], .range-input {
+    /* CHANGED: added input[type="text"] so the new keyword field matches existing styling */
+    select, input[type="number"], input[type="text"], .range-input {
       width: 100%;
       padding: 0.85rem 1rem;
       border: 1px solid var(--border-light);
@@ -230,6 +235,7 @@
       transition: var(--transition);
       width: 100%;
       box-shadow: 0 4px 12px rgba(0, 106, 68, 0.2);
+      text-decoration: none;
     }
     .btn-primary:hover {
       background: var(--primary-dark);
@@ -338,6 +344,10 @@
         <div class="input-group"><label>Province</label><select id="provinceSelect"><option value="All">All Provinces</option><option>Gauteng</option><option>Western Cape</option><option>KwaZulu-Natal</option><option>Eastern Cape</option><option>Free State</option><option>Limpopo</option><option>Mpumalanga</option><option>North West</option><option>Northern Cape</option></select></div>
         <div class="input-group"><label>Weekly availability</label><select id="timeSelect"><option value="5">Less than 5h</option><option value="10">5–10h</option><option value="20" selected>10–20h</option><option value="30">20–30h</option><option value="40">30h+ (full-time)</option></select></div>
         <div class="input-group"><label>Startup budget (ZAR)</label><div class="budget-row"><input type="range" id="budgetSlider" min="0" max="7000" step="100" value="600" style="flex:2"><span class="budget-badge" id="budgetValue">R600</span></div></div>
+        <!-- NEW: Keyword search field -->
+        <div class="input-group"><label>Keyword search</label><input type="text" id="keywordInput" placeholder="Search title, company, or category…"></div>
+        <!-- NEW: Opportunity type filter -->
+        <div class="input-group"><label>Opportunity type</label><select id="typeSelect"><option value="All">All Types</option><option value="Hustle">Hustle</option><option value="Job">Job</option><option value="Internship">Internship</option></select></div>
       </div>
       <div class="input-group" style="margin-top: 1rem;">
         <label>Your skills (select at least one)</label>
@@ -369,72 +379,235 @@
 </footer>
 
 <script>
-  // ---------- EXPANDED HUSTLE DATABASE (40+ opportunities, SA specific) ----------
-  const hustlesDB = [
-    {id:1,name:"Weekend Car Wash",desc:"Mobile car valet at homes or events around your area",skills:["Cleaning","Sales"],minAge:14,budget:180,earn:"R200–R600/day",regions:["All"],timeReq:10,cats:["Offline","Low-budget","Weekend"],difficulty:"Easy",icon:"droplets"},
-    {id:2,name:"Spaza Shop Assistant",desc:"Help local spaza, sell groceries/airtime",skills:["Sales","Bookkeeping"],minAge:16,budget:0,earn:"R2000–R5000/mo",regions:["All"],timeReq:20,cats:["Offline","No-money-needed","Student-friendly"],difficulty:"Easy",icon:"shopping-bag"},
-    {id:3,name:"Online Reselling (Marketplace)",desc:"Flip second-hand goods on FB / Yaga",skills:["Sales","Photography"],minAge:13,budget:0,earn:"R300–R3000/mo",regions:["All"],timeReq:10,cats:["Online","No-money-needed","Student-friendly"],difficulty:"Easy",icon:"shopping-bag"},
-    {id:4,name:"Matric Tutor (Math/English)",desc:"One-on-one or group tutoring",skills:["Tutoring","Public Speaking"],minAge:18,budget:0,earn:"R150–R400/hour",regions:["All"],timeReq:8,cats:["Online","Offline","High-income"],difficulty:"Medium",icon:"book-open"},
-    {id:5,name:"Cape Town Walking Guide",desc:"Showcase historical routes to tourists",skills:["Tour Guiding","Public Speaking"],minAge:18,budget:200,earn:"R400–R1500/tour",regions:["Western Cape"],timeReq:12,cats:["Offline","Weekend","High-income"],difficulty:"Medium",icon:"map"},
-    {id:6,name:"Freelance Graphic Design",desc:"Logos, flyers, social visuals",skills:["Graphic Design","UX/UI Design"],minAge:16,budget:0,earn:"R300–R3000/project",regions:["All"],timeReq:10,cats:["Online","No-money-needed","High-income"],difficulty:"Medium",icon:"layers"},
-    {id:7,name:"Home Baking & Catering",desc:"Sell cakes, vetkoek, muffins",skills:["Cooking/Baking","Sales"],minAge:16,budget:300,earn:"R200–R1200/day",regions:["All"],timeReq:12,cats:["Offline","Low-budget","Weekend"],difficulty:"Easy",icon:"utensils"},
-    {id:8,name:"Phone & Laptop Repair",desc:"Screen replacement, software fixes",skills:["Computer Repair","Mobile Phone Repair"],minAge:18,budget:500,earn:"R200–R800/repair",regions:["All"],timeReq:12,cats:["Offline","Full-time","High-income"],difficulty:"Hard",icon:"smartphone"},
-    {id:9,name:"Social Media Manager",desc:"Manage Instagram/TikTok for SMEs",skills:["Social Media Management","Content Strategy"],minAge:16,budget:0,earn:"R2000–R10000/mo",regions:["All"],timeReq:15,cats:["Online","No-money-needed","High-income"],difficulty:"Medium",icon:"share-2"},
-    {id:10,name:"Gardening & Landscaping",desc:"Lawn mowing, pruning, planting",skills:["Gardening/Landscaping","Handyman"],minAge:16,budget:200,earn:"R250–R800/day",regions:["All"],timeReq:10,cats:["Offline","Low-budget","Weekend"],difficulty:"Easy",icon:"leaf"},
-    {id:11,name:"Solar Panel Cleaning",desc:"Residential solar maintenance",skills:["Cleaning","Solar Installation"],minAge:18,budget:400,earn:"R400–R1500/job",regions:["All"],timeReq:8,cats:["Offline","High-income"],difficulty:"Medium",icon:"sun"},
-    {id:12,name:"Translation (Zulu/Xhosa/Afrikaans)",desc:"Document translation & localization",skills:["Language Translation","Proofreading"],minAge:18,budget:0,earn:"R100–R500/page",regions:["All"],timeReq:6,cats:["Online","No-money-needed","Student-friendly"],difficulty:"Easy",icon:"globe"},
-    {id:13,name:"Handyman Services",desc:"Furniture assembly, painting, small fixes",skills:["Handyman","Carpentry"],minAge:18,budget:300,earn:"R300–R1000/job",regions:["All"],timeReq:10,cats:["Offline","Low-budget","Weekend"],difficulty:"Medium",icon:"wrench"},
-    {id:14,name:"Pet Sitting & Dog Walking",desc:"Care for pets while owners away",skills:["Pet Grooming","Sales"],minAge:16,budget:0,earn:"R100–R400/day",regions:["All"],timeReq:8,cats:["Offline","No-money-needed","Student-friendly"],difficulty:"Easy",icon:"heart"},
-    {id:15,name:"Drone Photography (Real Estate)",desc:"Aerial shots for agents",skills:["Drone Piloting","Photography"],minAge:18,budget:3000,earn:"R800–R5000/job",regions:["All"],timeReq:6,cats:["Offline","High-income"],difficulty:"Hard",icon:"camera"},
-    {id:16,name:"CV & Resume Writing",desc:"Professional CV makeover",skills:["Resume Writing","Proofreading"],minAge:18,budget:0,earn:"R150–R600/CV",regions:["All"],timeReq:6,cats:["Online","No-money-needed","Student-friendly"],difficulty:"Easy",icon:"file-text"},
-    {id:17,name:"Gauteng Food Delivery (bike)",desc:"Deliver meals via UberEats / Mr D",skills:["Driving","Sales"],minAge:18,budget:800,earn:"R150–R500/day",regions:["Gauteng","All"],timeReq:25,cats:["Offline","Full-time","Low-budget"],difficulty:"Easy",icon:"bike"},
-    {id:18,name:"Shebeen Pop-up Catering",desc:"Traditional food at parties",skills:["Cooking/Baking","Event Planning"],minAge:18,budget:800,earn:"R1000–R5000/event",regions:["All"],timeReq:15,cats:["Offline","Weekend","High-income"],difficulty:"Medium",icon:"flame"},
-    {id:19,name:"Virtual Assistant for SMEs",desc:"Admin, email, scheduling support",skills:["Typing","Social Media Management"],minAge:18,budget:0,earn:"R2000–R7000/mo",regions:["All"],timeReq:15,cats:["Online","No-money-needed","High-income"],difficulty:"Medium",icon:"monitor"},
-    {id:20,name:"Event Photography",desc:"Weddings, parties, portraits",skills:["Photography","Video Editing"],minAge:18,budget:2000,earn:"R1500–R6000/event",regions:["All"],timeReq:12,cats:["Offline","Weekend","High-income"],difficulty:"Hard",icon:"camera"},
-    {id:21,name:"Fitness Bootcamp Leader",desc:"Outdoor group training",skills:["Fitness Coaching","Public Speaking"],minAge:18,budget:200,earn:"R150–R400/session",regions:["All"],timeReq:8,cats:["Offline","Weekend","Low-budget"],difficulty:"Medium",icon:"dumbbell"},
-    {id:22,name:"Candle & Soap Making",desc:"Handmade products sold at markets",skills:["Candle Making","Soap Making"],minAge:16,budget:150,earn:"R50–R500/item",regions:["All"],timeReq:10,cats:["Offline","Low-budget","Creative"],difficulty:"Easy",icon:"battery"},
-    {id:23,name:"Digital Marketing Consultant",desc:"SEO, ads, analytics for local biz",skills:["Digital Marketing","SEO"],minAge:18,budget:0,earn:"R3000–R15000/mo",regions:["All"],timeReq:20,cats:["Online","No-money-needed","High-income"],difficulty:"Hard",icon:"bar-chart-2"},
-    {id:24,name:"House Painting Services",desc:"Interior/exterior painting",skills:["Handyman","Painting"],minAge:18,budget:400,earn:"R500–R2000/job",regions:["All"],timeReq:15,cats:["Offline","Weekend","Low-budget"],difficulty:"Medium",icon:"paintbrush"},
-    {id:25,name:"Makeup Artist (Events)",desc:"Bridal, photoshoot makeup",skills:["Makeup Artistry","Sales"],minAge:18,budget:300,earn:"R300–R1500/job",regions:["All"],timeReq:8,cats:["Offline","Weekend","High-income"],difficulty:"Medium",icon:"user-check"},
-    {id:26,name:"Takealot Reselling",desc:"Buy discount items, resell on marketplace profitably",skills:["Sales","Online Marketplaces"],minAge:16,budget:500,earn:"R100–R2000/mo",regions:["All"],timeReq:6,cats:["Online","Low-budget","Student-friendly"],difficulty:"Easy",icon:"trending-up"},
-    {id:27,name:"Gumtree Trading",desc:"Buy and sell second-hand items on Gumtree",skills:["Sales","Negotiation"],minAge:13,budget:0,earn:"R200–R3000/mo",regions:["All"],timeReq:8,cats:["Online","No-money-needed","Student-friendly"],difficulty:"Easy",icon:"shopping-bag"},
-    {id:28,name:"Instagram Shop Owner",desc:"Curate niche products and sell via Instagram DM",skills:["Social Media Management","Sales","Photography"],minAge:16,budget:1000,earn:"R500–R5000/mo",regions:["All"],timeReq:12,cats:["Online","Low-budget","Creative"],difficulty:"Medium",icon:"camera"},
-    {id:29,name:"Data Bundle Reselling",desc:"Resell MTN, Vodacom, Telkom data bundles locally",skills:["Sales","Customer Service"],minAge:16,budget:200,earn:"R200–R1000/mo",regions:["All"],timeReq:4,cats:["Offline","Low-budget","Flexible"],difficulty:"Easy",icon:"wifi"},
-    {id:30,name:"Airtime & Electricity Vending",desc:"Sell airtime and prepaid power tokens in your area",skills:["Sales","Bookkeeping"],minAge:16,budget:300,earn:"R300–R1500/mo",regions:["All"],timeReq:6,cats:["Offline","Low-budget","Flexible"],difficulty:"Easy",icon:"zap"},
-    {id:31,name:"Uber or Bolt Driving",desc:"Drive passengers on ride-hailing platforms",skills:["Driving","Customer Service"],minAge:21,budget:5000,earn:"R200–R800/day",regions:["Gauteng","Western Cape","KwaZulu-Natal"],timeReq:20,cats:["Offline","Full-time","High-income"],difficulty:"Medium",icon:"car"},
-    {id:32,name:"Content Creator (TikTok/YouTube)",desc:"Create viral videos and monetise through partnerships",skills:["Video Editing","Content Strategy","Public Speaking"],minAge:16,budget:0,earn:"R500–R10000/mo",regions:["All"],timeReq:15,cats:["Online","Creative","Student-friendly"],difficulty:"Hard",icon:"video"},
-    {id:33,name:"Freelance Writing & Copywriting",desc:"Write blogs, ads, and social content for brands",skills:["Writing","SEO","Proofreading"],minAge:18,budget:0,earn:"R200–R2000/article",regions:["All"],timeReq:10,cats:["Online","No-money-needed","Flexible"],difficulty:"Medium",icon:"pen-tool"},
-    {id:34,name:"Virtual Event Hosting",desc:"Host online events, DJ via Zoom or Facebook Live",skills:["Event Planning","Public Speaking","Music Production"],minAge:18,budget:100,earn:"R500–R3000/event",regions:["All"],timeReq:8,cats:["Online","Weekend","High-income"],difficulty:"Medium",icon:"music"},
-    {id:35,name:"Domestic Cleaning Services",desc:"Clean homes weekly, bi-weekly or monthly",skills:["Cleaning","Customer Service"],minAge:18,budget:150,earn:"R300–R1200/month",regions:["All"],timeReq:12,cats:["Offline","Low-budget","Full-time"],difficulty:"Easy",icon:"droplet"},
-    {id:36,name:"Laundry & Ironing Services",desc:"Wash, dry and iron clothes for busy professionals",skills:["Cleaning","Customer Service"],minAge:16,budget:200,earn:"R150–R500/week",regions:["All"],timeReq:10,cats:["Offline","Low-budget","Flexible"],difficulty:"Easy",icon:"shirt"},
-    {id:37,name:"Uber Eats Food Delivery",desc:"Deliver restaurant food via bike or car",skills:["Driving","Navigation"],minAge:18,budget:1000,earn:"R150–R600/day",regions:["Gauteng","Western Cape","KwaZulu-Natal"],timeReq:20,cats:["Offline","Flexible","Full-time"],difficulty:"Easy",icon:"truck"},
-    {id:38,name:"Online Tutoring (Varsity)",desc:"Teach students maths, science, languages via Zoom",skills:["Tutoring","Public Speaking","Teaching"],minAge:18,budget:0,earn:"R100–R500/hour",regions:["All"],timeReq:8,cats:["Online","No-money-needed","High-income"],difficulty:"Medium",icon:"book"},
-    {id:39,name:"Web Design & Development",desc:"Build professional websites for SMEs and startups",skills:["Web Design","UX/UI Design","Programming"],minAge:18,budget:0,earn:"R2000–R20000/site",regions:["All"],timeReq:15,cats:["Online","No-money-needed","High-income"],difficulty:"Hard",icon:"code"},
-    {id:40,name:"Security Guard Services",desc:"Provide night or day security for shops and events",skills:["Customer Service","Sales"],minAge:21,budget:100,earn:"R200–R500/night",regions:["All"],timeReq:25,cats:["Offline","Full-time","Low-budget"],difficulty:"Easy",icon:"shield"}
+  /* ==================================================================
+     SUPABASE CONFIGURATION
+     ==================================================================
+     Replace the two placeholder strings below with your own credentials
+     from your Supabase project dashboard (Settings → API):
+
+       1. SUPABASE_URL             →  Your Project URL
+       2. SUPABASE_PUBLISHABLE_KEY →  Your publishable / anon key
+
+     Do NOT put your secret / service-role key here.
+     The frontend only uses the publishable key + the public
+     SELECT RLS policy you already configured.
+     ================================================================== */
+  const SUPABASE_URL             = 'https://eirntbprntnhuiiluykx.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY  = 'sb_publishable_tTgb2Uz9wTV4rvZ8tp51zw_A75qwcnY';
+
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+  /* ==================================================================
+     STATIC SKILLS LIST
+     (Preserved from the original site — also merged with any new
+      categories found in the Supabase data at runtime.)
+     ================================================================== */
+  const STATIC_SKILLS = [
+    'Bookkeeping','Candle Making','Carpentry','Cleaning','Computer Repair',
+    'Content Strategy','Cooking/Baking','Customer Service','Digital Marketing',
+    'Drone Piloting','Driving','Event Planning','Fitness Coaching',
+    'Gardening/Landscaping','Graphic Design','Handyman','Language Translation',
+    'Makeup Artistry','Mobile Phone Repair','Music Production','Navigation',
+    'Negotiation','Online Marketplaces','Painting','Pet Grooming','Photography',
+    'Programming','Proofreading','Public Speaking','Resume Writing','SEO',
+    'Sales','Social Media Management','Soap Making','Solar Installation',
+    'Teaching','Tour Guiding','Tutoring','Typing','UX/UI Design',
+    'Video Editing','Web Design','Writing'
   ];
 
-  // Build master skills list from all hustles (deduplicated)
-  const allSkillsSet = new Set();
-  hustlesDB.forEach(h => h.skills.forEach(s => allSkillsSet.add(s)));
-  const masterSkills = Array.from(allSkillsSet).sort();
+  let masterSkills = [...STATIC_SKILLS].sort();
 
-  // Render skills grid with toggle (show first 12 initially)
+  /* ==================================================================
+     GLOBAL STATE
+     ================================================================== */
+  let opportunitiesCache = [];   // all rows fetched from Supabase
+  let allResultsCache     = [];   // current filtered/sorted list being paginated
+  let resultsDisplayed    = 0;
+  let skillsExpanded      = false;
+  let dataLoaded          = false;
+  const INITIAL_VISIBLE   = 12;
+
+  /* ==================================================================
+     HELPER UTILITIES
+     ================================================================== */
+
+  // Prevent XSS — escape any user / DB text before injecting into HTML
+  function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+  }
+
+  // Pick a Lucide icon based on the opportunity type
+  function getIconForType(type) {
+    if (!type) return 'sparkles';
+    const lower = type.toLowerCase();
+    if (lower.includes('job'))      return 'briefcase';
+    if (lower.includes('intern'))   return 'graduation-cap';
+    if (lower.includes('hustle'))   return 'zap';
+    return 'sparkles';
+  }
+
+  // Human-friendly date (e.g.  "15 Dec 2024")
+  function formatDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-ZA', { day:'numeric', month:'short', year:'numeric' });
+    } catch (_) {
+      return String(dateStr);
+    }
+  }
+
+  // Only allow http(s) URLs (blocks javascript: etc.)
+  function isValidUrl(url) {
+    if (!url) return false;
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // "Apply Now" for Jobs / Internships, "View Opportunity" for Hustles
+  function getButtonText(type) {
+    if (!type) return 'View Opportunity';
+    const lower = type.toLowerCase();
+    if (lower.includes('hustle')) return 'View Opportunity';
+    return 'Apply Now';
+  }
+
+  /* ==================================================================
+     SUPABASE DATA FETCH
+     ================================================================== */
+  async function fetchOpportunities() {
+    const resultsDiv = document.getElementById('resultsArea');
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('opportunities')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      opportunitiesCache = data || [];
+      dataLoaded = true;
+
+      // Merge any new categories from the live data into the skills list
+      const merged = new Set(masterSkills);
+      opportunitiesCache.forEach(opp => {
+        if (opp.category) {
+          opp.category.split(',').forEach(c => {
+            const trimmed = c.trim();
+            if (trimmed) merged.add(trimmed);
+          });
+        }
+      });
+      masterSkills = Array.from(merged).sort();
+      renderSkills();
+
+      // Show everything on first load (featured first)
+      showAllOpportunities();
+
+    } catch (err) {
+      console.error('Supabase fetch error:', err);
+      dataLoaded = true;
+      showErrorState();
+    }
+  }
+
+  /* ==================================================================
+     LOADING / EMPTY / ERROR STATES
+     ================================================================== */
+  function showLoadingState() {
+    const resultsDiv = document.getElementById('resultsArea');
+    resultsDiv.innerHTML =
+      '<div class="skeleton"></div>' +
+      '<div class="skeleton"></div>' +
+      '<div class="skeleton"></div>';
+  }
+
+  function showEmptyState() {
+    const resultsDiv = document.getElementById('resultsArea');
+    resultsDiv.innerHTML =
+      '<div class="card" style="text-align:center;">' +
+        '<i data-lucide="inbox" style="width:44px;height:44px;margin-bottom:0.5rem;color:var(--text-muted);"></i>' +
+        '<h4>No opportunities available right now.</h4>' +
+        '<p style="color:var(--text-muted);">Please check back soon.</p>' +
+      '</div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  function showErrorState() {
+    const resultsDiv = document.getElementById('resultsArea');
+    resultsDiv.innerHTML =
+      '<div class="card" style="text-align:center;">' +
+        '<i data-lucide="alert-circle" style="width:44px;height:44px;margin-bottom:0.5rem;color:#b91c1c;"></i>' +
+        '<h4>Unable to load opportunities</h4>' +
+        '<p style="color:var(--text-muted);">Please check your connection and try again later.</p>' +
+      '</div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  function showNoSearchResults() {
+    const resultsDiv = document.getElementById('resultsArea');
+    resultsDiv.innerHTML =
+      '<div class="card" style="text-align:center;">' +
+        '<i data-lucide="search-x" style="width:44px;height:44px;margin-bottom:0.5rem;color:var(--text-muted);"></i>' +
+        '<h4>No results found</h4>' +
+        '<p style="color:var(--text-muted);">Try different skills, keywords, or province.</p>' +
+      '</div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  function showAllOpportunities() {
+    if (!dataLoaded) {
+      showLoadingState();
+      return;
+    }
+    if (opportunitiesCache.length === 0) {
+      showEmptyState();
+      return;
+    }
+
+    // Sort featured first, then keep created_at order
+    const sorted = [...opportunitiesCache].sort((a, b) => {
+      if (a.featured && !b.featured) return -1;
+      if (!a.featured && b.featured) return  1;
+      return 0;
+    });
+
+    renderResults(sorted, []);
+  }
+
+  /* ==================================================================
+     SKILLS GRID  (unchanged from original — just uses masterSkills)
+     ================================================================== */
   const skillsGrid = document.getElementById('skillsGrid');
-  let skillsExpanded = false;
-  const INITIAL_VISIBLE = 12;
 
   function renderSkills() {
     skillsGrid.innerHTML = '';
-    const skillsToShow = skillsExpanded ? masterSkills : masterSkills.slice(0, INITIAL_VISIBLE);
+    const skillsToShow = skillsExpanded
+      ? masterSkills
+      : masterSkills.slice(0, INITIAL_VISIBLE);
+
     skillsToShow.forEach(skill => {
       const div = document.createElement('div');
       div.className = 'skill-item';
-      div.innerHTML = `<input type="checkbox" id="sk_${skill.replace(/\s/g, '')}" value="${skill}"><span>${skill}</span>`;
+      div.innerHTML =
+        '<input type="checkbox" id="sk_' + skill.replace(/\s/g,'') + '" value="' + escapeHtml(skill) + '">' +
+        '<span>' + escapeHtml(skill) + '</span>';
       skillsGrid.appendChild(div);
     });
+
     const toggleBtn = document.getElementById('toggleSkillsBtn');
     if (toggleBtn) {
-      toggleBtn.innerHTML = skillsExpanded ? '<i data-lucide="chevron-up"></i> Show fewer skills' : '<i data-lucide="chevron-down"></i> Show more skills (+' + (masterSkills.length - INITIAL_VISIBLE) + ')';
+      toggleBtn.innerHTML = skillsExpanded
+        ? '<i data-lucide="chevron-up"></i> Show fewer skills'
+        : '<i data-lucide="chevron-down"></i> Show more skills (+' + (masterSkills.length - INITIAL_VISIBLE) + ')';
       if (typeof lucide !== 'undefined') lucide.createIcons();
     }
   }
@@ -447,142 +620,313 @@
   renderSkills();
   skillsGrid.classList.add('skills-container');
 
-  // Budget slider logic
-  const slider = document.getElementById('budgetSlider');
+  /* ==================================================================
+     BUDGET SLIDER  (unchanged from original)
+     ================================================================== */
+  const slider     = document.getElementById('budgetSlider');
   const budgetSpan = document.getElementById('budgetValue');
-  slider.addEventListener('input', () => { budgetSpan.innerText = `R${slider.value}`; });
-  budgetSpan.innerText = `R${slider.value}`;
+  slider.addEventListener('input', () => { budgetSpan.innerText = 'R' + slider.value; });
+  budgetSpan.innerText = 'R' + slider.value;
 
-  // Matching engine (region, time, budget, skills)
-  function matchesRegion(hustle, province) {
+  /* ==================================================================
+     MATCHING / FILTER ENGINE
+     (Adapted to work with the Supabase `opportunities` columns.)
+     ================================================================== */
+  function matchesRegion(opp, province) {
     if (province === 'All') return true;
-    return hustle.regions.includes('All') || hustle.regions.includes(province);
-  }
-  function matchesTime(hustle, userHours) {
-    return userHours >= hustle.timeReq * 0.7;
-  }
-  function findTopHustles(age, province, selectedSkillsArr, budget, hoursPerWeek) {
-    let candidates = hustlesDB.filter(h => {
-      if (age < h.minAge) return false;
-      if (!matchesRegion(h, province)) return false;
-      if (!matchesTime(h, hoursPerWeek)) return false;
-      if (budget < h.budget * 0.7) return false;
-      return selectedSkillsArr.some(skill => h.skills.includes(skill));
-    });
-    const scored = candidates.map(h => {
-      const matched = selectedSkillsArr.filter(s => h.skills.includes(s));
-      const matchCount = matched.length;
-      const matchRatio = matchCount / Math.max(1, h.skills.length);
-      const budgetDiff = Math.abs(budget - h.budget);
-      const budgetScore = Math.max(0, 1 - (budgetDiff / 7000));
-      const timeBonus = hoursPerWeek >= h.timeReq ? 15 : 5;
-      const regionBonus = (province !== 'All' && h.regions.includes(province)) ? 12 : 0;
-      let score = (matchCount * 100) + (matchRatio * 30) + (budgetScore * 20) + timeBonus + regionBonus;
-      return { ...h, score, matchedSkills: matched, budgetDiff };
-    });
-    scored.sort((a,b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      if (b.matchedSkills.length !== a.matchedSkills.length) return b.matchedSkills.length - a.matchedSkills.length;
-      return a.budgetDiff - b.budgetDiff;
-    });
-    return scored.slice(0, 6);
+    if (!opp.location) return true;                         // blank location = everywhere
+    const loc = opp.location.toLowerCase();
+    return loc.includes(province.toLowerCase()) ||
+           loc.includes('all') ||
+           loc.includes('south africa') ||
+           loc.includes('nationwide') ||
+           loc.includes('any');
   }
 
-  let allResultsCache = [];
-  let resultsDisplayed = 0;
-  
+  function findTopOpportunities(province, selectedSkillsArr, keyword, typeFilter) {
+    const kw      = keyword ? keyword.toLowerCase().trim() : '';
+    const typeVal = typeFilter ? typeFilter.toLowerCase()   : '';
+
+    let candidates = opportunitiesCache.filter(opp => {
+      // Province / location filter
+      if (!matchesRegion(opp, province)) return false;
+
+      // Type filter (Hustle / Job / Internship)
+      if (typeVal && typeVal !== 'all') {
+        const oppType = (opp.type || '').toLowerCase();
+        if (!oppType.includes(typeVal)) return false;
+      }
+
+      // Keyword search across title, company, category, description
+      if (kw) {
+        const title    = (opp.title       || '').toLowerCase();
+        const company  = (opp.company     || '').toLowerCase();
+        const category = (opp.category    || '').toLowerCase();
+        const desc     = (opp.description || '').toLowerCase();
+        if (!title.includes(kw) && !company.includes(kw) &&
+            !category.includes(kw) && !desc.includes(kw)) {
+          return false;
+        }
+      }
+
+      // Skills filter — match selected skills against category + description
+      if (selectedSkillsArr.length > 0) {
+        const cat  = (opp.category    || '').toLowerCase();
+        const desc = (opp.description || '').toLowerCase();
+        const hasMatch = selectedSkillsArr.some(skill => {
+          const s = skill.toLowerCase();
+          return cat.includes(s) || desc.includes(s);
+        });
+        if (!hasMatch) return false;
+      }
+
+      return true;
+    });
+
+    // Attach matched-skills info for display on the card
+    const scored = candidates.map(opp => {
+      const cat  = (opp.category    || '').toLowerCase();
+      const desc = (opp.description || '').toLowerCase();
+      const matchedSkills = selectedSkillsArr.filter(skill => {
+        const s = skill.toLowerCase();
+        return cat.includes(s) || desc.includes(s);
+      });
+      return { ...opp, matchedSkills };
+    });
+
+    // Sort: featured first, then keep original (created_at desc) order
+    scored.sort((a, b) => {
+      if (a.featured && !b.featured) return -1;
+      if (!a.featured && b.featured) return  1;
+      return 0;
+    });
+
+    return scored;
+  }
+
+  /* ==================================================================
+     CARD RENDERING  (same visual design, now driven by Supabase data)
+     ================================================================== */
+  let allResultsCache2 = [];
+  let resultsDisplayed2 = 0;
+
   function renderResultsPage(startIndex = 0) {
     const resultsDiv = document.getElementById('resultsArea');
     if (startIndex === 0) resultsDiv.innerHTML = '';
-    
+
     const itemsPerPage = 3;
     const endIndex = Math.min(startIndex + itemsPerPage, allResultsCache.length);
-    
+
     for (let i = startIndex; i < endIndex; i++) {
-      const h = allResultsCache[i];
-      const matchedDisplay = h.matchedSkills.length ? h.matchedSkills.join(', ') : 'none';
-      const lowWarning = (h.userBudget < h.budget && h.userBudget >= h.budget * 0.7);
-      const catsHtml = h.cats.slice(0,3).map(c => `<span class="badge-cat"><i data-lucide="tag"></i> ${c}</span>`).join(' ');
+      const opp  = allResultsCache[i];
+      const icon = getIconForType(opp.type);
+
+      // --- Image / icon block -----------------------------------------
+      let mediaHtml;
+      if (opp.image_url && isValidUrl(opp.image_url)) {
+        mediaHtml =
+          '<div style="background:#e9f4ef; border-radius:1rem; padding:0.6rem; position:relative; width:40px; height:40px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">' +
+            '<i data-lucide="' + icon + '" style="width:28px;height:28px;color:#006a44;position:absolute;"></i>' +
+            '<img data-opp-img src="' + escapeHtml(opp.image_url) + '" alt="' + escapeHtml(opp.title || '') + '" style="width:28px;height:28px;border-radius:0.5rem;object-fit:cover;position:relative;z-index:1;">' +
+          '</div>';
+      } else {
+        mediaHtml =
+          '<div style="background:#e9f4ef; border-radius:1rem; padding:0.6rem; flex-shrink:0;">' +
+            '<i data-lucide="' + icon + '" style="width:28px;height:28px;color:#006a44;"></i>' +
+          '</div>';
+      }
+
+      // --- Badges (type, category, featured) ---------------------------
+      let badgesHtml = '';
+      if (opp.type) {
+        badgesHtml +=
+          '<span class="badge-cat" style="background:#e6f7ee;color:#006a44;">' +
+            '<i data-lucide="' + icon + '"></i> ' + escapeHtml(opp.type) +
+          '</span> ';
+      }
+      if (opp.category) {
+        opp.category.split(',')
+          .map(c => c.trim())
+          .filter(c => c)
+          .slice(0, 3)
+          .forEach(c => {
+            badgesHtml +=
+              '<span class="badge-cat"><i data-lucide="tag"></i> ' + escapeHtml(c) + '</span> ';
+          });
+      }
+      if (opp.featured) {
+        badgesHtml +=
+          '<span class="badge-cat" style="background:#fff4e0;color:#b45309;">' +
+            '<i data-lucide="star"></i> Featured' +
+          '</span> ';
+      }
+
+      // --- Company line ------------------------------------------------
+      let companyHtml = '';
+      if (opp.company) {
+        companyHtml =
+          '<p style="color:var(--text-muted); margin-bottom:0.5rem; font-size:0.85rem; font-weight:500;">' +
+            '<i data-lucide="building-2" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px;"></i>' +
+            escapeHtml(opp.company) +
+          '</p>';
+      }
+
+      // --- Description -------------------------------------------------
+      let descHtml = '';
+      if (opp.description) {
+        descHtml = '<p style="color:var(--text-muted); margin-bottom:1rem;">' + escapeHtml(opp.description) + '</p>';
+      }
+
+      // --- Meta pills (location, deadline) -----------------------------
+      let pillsHtml = '<div style="display:flex; flex-wrap:wrap; gap:0.6rem; margin-bottom:0.8rem;">';
+      if (opp.location) {
+        pillsHtml +=
+          '<span class="meta-pill"><i data-lucide="map-pin"></i> ' + escapeHtml(opp.location) + '</span>';
+      }
+      if (opp.deadline) {
+        pillsHtml +=
+          '<span class="meta-pill"><i data-lucide="calendar"></i> Deadline: ' + escapeHtml(formatDate(opp.deadline)) + '</span>';
+      }
+      pillsHtml += '</div>';
+
+      // --- Skills match pill -------------------------------------------
+      let skillsMatchHtml = '';
+      if (opp.matchedSkills && opp.matchedSkills.length > 0) {
+        skillsMatchHtml =
+          '<div class="meta-pill" style="background:#eef2ff;margin-bottom:0.8rem;">' +
+            '<i data-lucide="check-circle"></i> Skills match: ' + escapeHtml(opp.matchedSkills.join(', ')) +
+          '</div>';
+      }
+
+      // --- Apply / View button ----------------------------------------
+      let applyHtml = '';
+      if (opp.application_url && isValidUrl(opp.application_url)) {
+        const btnText = getButtonText(opp.type);
+        applyHtml =
+          '<a href="' + escapeHtml(opp.application_url) + '" target="_blank" rel="noopener noreferrer" class="btn-primary" style="width:auto;display:inline-flex;margin-top:0.5rem;">' +
+            '<i data-lucide="external-link"></i> ' + btnText +
+          '</a>';
+      }
+
+      // --- Assemble card ----------------------------------------------
       const card = document.createElement('div');
       card.className = 'result-card';
-      card.innerHTML = `
-        <div style="display:flex; gap:0.8rem; flex-wrap:wrap; align-items:center; margin-bottom:0.8rem;">
-          <div style="background:#e9f4ef; border-radius:1rem; padding:0.6rem;"><i data-lucide="${h.icon}" style="width:28px;height:28px;color:#006a44;"></i></div>
-          <div><h3 style="margin:0;">${h.name}</h3>${catsHtml}</div>
-        </div>
-        <p style="color:#475569; margin-bottom:1rem;">${h.desc}</p>
-        <div style="display:flex; flex-wrap:wrap; gap:0.6rem; margin-bottom:0.8rem;">
-          <span class="meta-pill"><i data-lucide="banknote"></i> Startup: R${h.budget}</span>
-          <span class="meta-pill"><i data-lucide="clock"></i> ~${h.timeReq}h/week</span>
-          <span class="meta-pill"><i data-lucide="trending-up"></i> ${h.earn}</span>
-          <span class="meta-pill"><i data-lucide="award"></i> ${h.difficulty}</span>
-        </div>
-        <div class="meta-pill" style="background:#eef2ff;"><i data-lucide="check-circle"></i> Skills match: ${matchedDisplay}</div>
-        ${lowWarning ? `<div style="margin-top:0.8rem; background:#fff1e0; border-radius:30px; padding:0.4rem 0.8rem; font-size:0.75rem;"><i data-lucide="alert-circle"></i> Budget slightly below recommended — consider saving extra R${h.budget - h.userBudget}</div>` : ''}
-      `;
+      card.innerHTML =
+        '<div style="display:flex; gap:0.8rem; flex-wrap:wrap; align-items:center; margin-bottom:0.8rem;">' +
+          mediaHtml +
+          '<div>' +
+            '<h3 style="margin:0; margin-bottom:0.3rem;">' + escapeHtml(opp.title || 'Untitled Opportunity') + '</h3>' +
+            badgesHtml +
+          '</div>' +
+        '</div>' +
+        companyHtml +
+        descHtml +
+        pillsHtml +
+        skillsMatchHtml +
+        applyHtml;
+
       resultsDiv.appendChild(card);
+
+      // Handle broken images — hide img so the icon behind it shows
+      card.querySelectorAll('img[data-opp-img]').forEach(img => {
+        img.addEventListener('error', function() {
+          this.style.display = 'none';
+        });
+      });
     }
-    
+
     resultsDisplayed = endIndex;
-    
+
+    // "See More" pagination button (same as original)
     if (endIndex < allResultsCache.length) {
       const loadMoreBtn = document.createElement('button');
-      loadMoreBtn.className = 'btn-primary';
-      loadMoreBtn.innerHTML = '<i data-lucide="chevron-down"></i> See More Hustles';
+      loadMoreBtn.className   = 'btn-primary';
+      loadMoreBtn.innerHTML   = '<i data-lucide="chevron-down"></i> See More Opportunities';
       loadMoreBtn.style.marginTop = '1.5rem';
       loadMoreBtn.addEventListener('click', () => renderResultsPage(endIndex));
       resultsDiv.appendChild(loadMoreBtn);
     }
-    
+
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
-  
-  function renderResults(hustlesList, userBudget, selectedSkills) {
-    const resultsDiv = document.getElementById('resultsArea');
-    if (!hustlesList.length) {
-      resultsDiv.innerHTML = `<div class="card" style="text-align:center;"><i data-lucide="search-x" style="width:44px;height:44px;margin-bottom:0.5rem;"></i><h4>No results found</h4><p>Try different skills, budget or province.</p></div>`;
-      if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  function renderResults(opportunitiesList, selectedSkills) {
+    if (!opportunitiesList.length) {
+      showNoSearchResults();
       return;
     }
-    allResultsCache = hustlesList.map(h => ({ ...h, userBudget }));
+    allResultsCache = opportunitiesList;
     renderResultsPage(0);
   }
 
+  /* ==================================================================
+     SEARCH  (form → filter cached Supabase data)
+     ================================================================== */
   function performSearch() {
-    const age = parseInt(document.getElementById('ageInput').value, 10);
+    const age      = parseInt(document.getElementById('ageInput').value, 10);
     const province = document.getElementById('provinceSelect').value;
-    const timeVal = parseInt(document.getElementById('timeSelect').value, 10);
-    const budget = parseInt(slider.value, 10);
+    const keyword   = document.getElementById('keywordInput').value;
+    const typeFilter = document.getElementById('typeSelect').value;
     const selectedCheckboxes = document.querySelectorAll('#skillsGrid input[type="checkbox"]:checked');
     const selectedSkills = Array.from(selectedCheckboxes).map(cb => cb.value);
     const feedback = document.getElementById('formFeedback');
-    if (isNaN(age) || age < 13 || age > 70) { feedback.innerText = 'Please enter a valid age between 13 and 70.'; return; }
-    if (selectedSkills.length === 0) { feedback.innerText = 'Select at least one skill (e.g., Sales, Tutoring, Driving).'; return; }
+
+    if (isNaN(age) || age < 13 || age > 70) {
+      feedback.innerText = 'Please enter a valid age between 13 and 70.';
+      return;
+    }
     feedback.innerText = '';
+
+    if (!dataLoaded) {
+      const resultsDiv = document.getElementById('resultsArea');
+      resultsDiv.innerHTML = '<div class="card" style="text-align:center;"><p>Loading opportunities…</p></div>';
+      return;
+    }
+
+    if (opportunitiesCache.length === 0) {
+      showEmptyState();
+      return;
+    }
+
+    // Brief skeleton flash (same feel as original)
     const resultsDiv = document.getElementById('resultsArea');
-    resultsDiv.innerHTML = `<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`;
+    resultsDiv.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+
     setTimeout(() => {
-      const matches = findTopHustles(age, province, selectedSkills, budget, timeVal);
-      renderResults(matches, budget, selectedSkills);
-    }, 180);
+      const matches = findTopOpportunities(province, selectedSkills, keyword, typeFilter);
+      renderResults(matches, selectedSkills);
+    }, 150);
   }
 
   function resetForm() {
-    document.getElementById('ageInput').value = 24;
-    document.getElementById('provinceSelect').value = 'All';
-    document.getElementById('timeSelect').value = '20';
+    document.getElementById('ageInput').value       = 24;
+    document.getElementById('provinceSelect').value  = 'All';
+    document.getElementById('timeSelect').value     = '20';
+    document.getElementById('keywordInput').value   = '';
+    document.getElementById('typeSelect').value      = 'All';
     slider.value = 600;
     budgetSpan.innerText = 'R600';
     document.querySelectorAll('#skillsGrid input[type="checkbox"]').forEach(cb => cb.checked = false);
-    document.getElementById('resultsArea').innerHTML = '';
     document.getElementById('formFeedback').innerText = '';
+
+    // Show all opportunities again
+    if (dataLoaded && opportunitiesCache.length > 0) {
+      showAllOpportunities();
+    } else {
+      document.getElementById('resultsArea').innerHTML = '';
+    }
   }
 
   document.getElementById('findBtn').addEventListener('click', performSearch);
   document.getElementById('resetFormBtn').addEventListener('click', resetForm);
 
-  // Section navigation
-  const sectionsMap = { finder:'finderSection', about:'aboutSection', contact:'contactSection', privacy:'privacySection', terms:'termsSection', disclaimer:'disclaimerSection' };
+  /* ==================================================================
+     SECTION NAVIGATION  (unchanged from original)
+     ================================================================== */
+  const sectionsMap = {
+    finder:'finderSection', about:'aboutSection', contact:'contactSection',
+    privacy:'privacySection', terms:'termsSection', disclaimer:'disclaimerSection'
+  };
   function showSection(sectionId) {
     Object.values(sectionsMap).forEach(sec => document.getElementById(sec)?.classList.add('hidden'));
     const target = document.getElementById(sectionsMap[sectionId]);
@@ -593,7 +937,13 @@
     btn.addEventListener('click', () => showSection(btn.getAttribute('data-section')));
   });
   showSection('finder');
+
+  /* ==================================================================
+     INITIAL LOAD — fetch from Supabase immediately
+     ================================================================== */
   if (typeof lucide !== 'undefined') lucide.createIcons();
+  showLoadingState();
+  fetchOpportunities();
 </script>
 </body>
 </html>
